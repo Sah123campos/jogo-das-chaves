@@ -99,6 +99,39 @@
           grid-template-columns: 1fr;
         }
       }
+      .rotate-hint {
+        display: none;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 14px;
+        text-align: center;
+      }
+      @media (pointer: coarse) and (orientation: portrait) {
+        .rotate-hint {
+          display: block;
+        }
+      }
+      @media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+        .layout {
+          grid-template-columns: minmax(0, 1fr) 220px;
+        }
+        .app {
+          padding-top: 8px;
+        }
+        h1 {
+          font-size: 22px;
+        }
+        .sub {
+          margin-bottom: 8px;
+        }
+        .touch {
+          margin-top: 8px;
+        }
+      }
       .stage {
         position: relative;
         border-radius: 12px;
@@ -432,6 +465,9 @@
       <h1>Labirinto das Chaves</h1>
       <p class="sub">
         Salas top-down, salas de plataforma e um labirinto novo a cada partida.
+      </p>
+      <p class="rotate-hint">
+        Para jogar melhor, vire o celular na horizontal.
       </p>
 
       <div class="layout">
