@@ -91,7 +91,7 @@
         gap: 16px;
         align-items: start;
       }
-      @media (max-width: 780px) {
+      @media (max-width: 1000px) {
         .layout {
           grid-template-columns: 1fr;
         }
@@ -323,6 +323,25 @@
         outline: 3px solid var(--pf);
         outline-offset: 2px;
       }
+      .volume-control {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 8px 12px;
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .volume-control input {
+        grid-column: 1 / -1;
+        width: 100%;
+        margin: 0;
+        accent-color: var(--pf);
+        cursor: pointer;
+      }
+      .volume-control output {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
       .touch {
         display: none;
         justify-content: space-between;
@@ -340,8 +359,8 @@
       }
       .dpad {
         display: grid;
-        grid-template-columns: repeat(3, 58px);
-        grid-template-rows: repeat(3, 58px);
+        grid-template-columns: repeat(3, 64px);
+        grid-template-rows: repeat(3, 64px);
         gap: 4px;
       }
       .tbtn {
@@ -362,8 +381,8 @@
         color: #fff;
       }
       .tbtn.jump {
-        width: 92px;
-        height: 92px;
+        width: 96px;
+        height: 96px;
         border-radius: 50%;
         font-size: 15px;
         background: var(--pf);
@@ -463,6 +482,18 @@
           <button class="btn2" id="musicBtn" aria-pressed="true">
             Música: ligada
           </button>
+          <div class="panel volume-control">
+            <label for="musicVolume">Volume da música</label>
+            <output id="musicVolumeValue" for="musicVolume">100%</output>
+            <input
+              id="musicVolume"
+              type="range"
+              min="0"
+              max="100"
+              value="100"
+              aria-label="Volume da música"
+            />
+          </div>
           <p class="small" id="seedTxt"></p>
         </aside>
       </div>
@@ -508,6 +539,7 @@
         let ac = null,
           muted = false,
           musicEnabled = true,
+          musicVolume = 1,
           musicGain = null,
           musicTimer = null,
           musicStep = 0,
@@ -528,7 +560,7 @@
         function setMusicVolume() {
           if (!musicGain || !ac) return;
           musicGain.gain.setTargetAtTime(
-            musicEnabled && !muted ? 0.07 : 0,
+            musicEnabled && !muted ? 0.32 * musicVolume : 0,
             ac.currentTime,
             0.08,
           );
@@ -602,7 +634,7 @@
                 Math.max(30, f + slide),
                 t + d,
               );
-            g.gain.setValueAtTime(vol, t);
+            g.gain.setValueAtTime(Math.min(vol * 2, 0.14), t);
             g.gain.exponentialRampToValueAtTime(0.0001, t + d);
             o.connect(g);
             g.connect(ac.destination);
@@ -1905,6 +1937,11 @@
           if (e.target.id === "playBtn") begin(state === "won");
         });
         $("newBtn").addEventListener("click", () => begin(true));
+        $("musicVolume").addEventListener("input", (event) => {
+          musicVolume = Number(event.target.value) / 100;
+          $("musicVolumeValue").value = event.target.value + "%";
+          setMusicVolume();
+        });
         $("musicBtn").addEventListener("click", () => {
           musicEnabled = !musicEnabled;
           $("musicBtn").textContent = musicEnabled
