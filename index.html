@@ -1,0 +1,1983 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Labirinto das Chaves</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <style>
+      :root {
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        --bg: #efeaf8;
+        --panel: #ffffff;
+        --ink: #221a3d;
+        --muted: #6a6188;
+        --line: #d9d0ee;
+        --gold: #c78a00;
+        --td: #7b52d6;
+        --pf: #1f93d1;
+        --btn: #2b1f55;
+        --btn-ink: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #120e22;
+          --panel: #1c1633;
+          --ink: #f0ebff;
+          --muted: #a49bc6;
+          --line: #352b59;
+          --gold: #ffcf4a;
+          --td: #9c7bf0;
+          --pf: #46b4ef;
+          --btn: #ffcf4a;
+          --btn-ink: #1c1633;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #120e22;
+        --panel: #1c1633;
+        --ink: #f0ebff;
+        --muted: #a49bc6;
+        --line: #352b59;
+        --gold: #ffcf4a;
+        --td: #9c7bf0;
+        --pf: #46b4ef;
+        --btn: #ffcf4a;
+        --btn-ink: #1c1633;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .app {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 14px 14px 28px;
+      }
+      h1 {
+        font-size: clamp(22px, 4vw, 30px);
+        margin: 4px 0 2px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 250px;
+        gap: 16px;
+        align-items: start;
+      }
+      @media (max-width: 780px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .stage {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #000;
+        border: 2px solid var(--line);
+      }
+      canvas#game {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 640/416;
+        image-rendering: pixelated;
+        touch-action: none;
+      }
+      .stage:fullscreen {
+        width: 100vw;
+        height: 100vh;
+        border: 0;
+        border-radius: 0;
+        display: grid;
+        place-items: center;
+      }
+      .stage:fullscreen canvas#game {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: auto;
+        object-fit: contain;
+      }
+      .fullscreen-exit {
+        display: none;
+        position: absolute;
+        z-index: 2;
+        top: 12px;
+        right: 12px;
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 10px;
+        padding: 9px 12px;
+        background: rgba(20, 14, 40, 0.88);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .stage:fullscreen .fullscreen-exit {
+        display: block;
+      }
+      .fullscreen-exit:focus-visible {
+        outline: 3px solid var(--pf);
+        outline-offset: 2px;
+      }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        background: rgba(12, 8, 28, 0.8);
+        backdrop-filter: blur(3px);
+      }
+      .overlay[hidden] {
+        display: none;
+      }
+      .card {
+        max-width: 420px;
+        width: 100%;
+        background: var(--panel);
+        color: var(--ink);
+        border-radius: 14px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+      }
+      .card h2 {
+        margin: 0 0 6px;
+        font-size: 22px;
+      }
+      .card p {
+        margin: 0 0 10px;
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .card ul {
+        list-style: none;
+        margin: 0 0 14px;
+        padding: 0;
+        display: grid;
+        gap: 7px;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+      .card li {
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+      }
+      .card li b {
+        color: var(--ink);
+      }
+      .dot {
+        flex: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-top: 3px;
+      }
+      button.main {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        background: var(--btn);
+        color: var(--btn-ink);
+        font: inherit;
+        font-weight: 700;
+        padding: 11px 18px;
+        border-radius: 10px;
+        width: 100%;
+      }
+      button.main:focus-visible,
+      .tbtn:focus-visible {
+        outline: 3px solid var(--pf);
+        outline-offset: 2px;
+      }
+      #toast {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        background: rgba(20, 14, 40, 0.92);
+        color: #fff;
+        font-size: 13px;
+        padding: 7px 13px;
+        border-radius: 999px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+        white-space: nowrap;
+        max-width: 94%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #toast.on {
+        opacity: 1;
+      }
+      .side {
+        display: grid;
+        gap: 12px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        text-align: center;
+      }
+      .stats div span {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .stats div b {
+        font-size: 19px;
+        font-variant-numeric: tabular-nums;
+      }
+      #mini {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 240/168;
+      }
+      .legend {
+        display: grid;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .legend span {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+      .legend i {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin: 0;
+      }
+      .small kbd {
+        font: inherit;
+        font-weight: 700;
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 0 5px;
+      }
+      .btn2 {
+        appearance: none;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 9px 12px;
+        width: 100%;
+      }
+      .btn2:focus-visible {
+        outline: 3px solid var(--pf);
+        outline-offset: 2px;
+      }
+      .touch {
+        display: none;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 14px;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        touch-action: none;
+      }
+      @media (pointer: coarse) {
+        .touch {
+          display: flex;
+        }
+      }
+      .dpad {
+        display: grid;
+        grid-template-columns: repeat(3, 58px);
+        grid-template-rows: repeat(3, 58px);
+        gap: 4px;
+      }
+      .tbtn {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        border-radius: 14px;
+        font-size: 22px;
+        font-weight: 700;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .tbtn:active,
+      .tbtn.on {
+        background: var(--td);
+        color: #fff;
+      }
+      .tbtn.jump {
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        font-size: 15px;
+        background: var(--pf);
+        color: #fff;
+        border: 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #toast {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <h1>Labirinto das Chaves</h1>
+      <p class="sub">
+        Salas top-down, salas de plataforma e um labirinto novo a cada partida.
+      </p>
+
+      <div class="layout">
+        <div>
+          <div class="stage">
+            <canvas
+              id="game"
+              width="640"
+              height="416"
+              aria-label="Área do jogo"
+            ></canvas>
+            <button
+              class="fullscreen-exit"
+              id="exitFullscreenBtn"
+              type="button"
+            >
+              Sair da tela cheia
+            </button>
+            <div id="toast" role="status" aria-live="polite"></div>
+            <div id="overlay" class="overlay">
+              <div class="card" id="card"></div>
+            </div>
+          </div>
+
+          <div class="touch" id="touch" aria-label="Controles de toque">
+            <div class="dpad">
+              <span></span
+              ><button class="tbtn" data-k="up" aria-label="Cima">▲</button
+              ><span></span>
+              <button class="tbtn" data-k="left" aria-label="Esquerda">◀</button
+              ><span></span
+              ><button class="tbtn" data-k="right" aria-label="Direita">
+                ▶
+              </button>
+              <span></span
+              ><button class="tbtn" data-k="down" aria-label="Baixo">▼</button
+              ><span></span>
+            </div>
+            <button class="tbtn jump" data-k="jump" aria-label="Pular">
+              Pular
+            </button>
+          </div>
+        </div>
+
+        <aside class="side">
+          <div class="panel stats">
+            <div><span>Chaves</span><b id="sKeys">0</b></div>
+            <div><span>Tempo</span><b id="sTime">0:00</b></div>
+            <div><span>Salas</span><b id="sRooms">1</b></div>
+          </div>
+          <div class="panel">
+            <canvas
+              id="mini"
+              width="240"
+              height="168"
+              aria-label="Mapa do labirinto"
+            ></canvas>
+            <div class="legend">
+              <span><i style="background: #8a5fe8"></i>Sala top-down</span>
+              <span><i style="background: #2aa3e6"></i>Sala de plataforma</span>
+              <span><i style="background: #f2c230"></i>Porta trancada</span>
+              <span
+                ><i style="background: #f2c230; border-radius: 50%"></i>Chave
+                deixada na sala</span
+              >
+            </div>
+          </div>
+          <div class="panel">
+            <p class="small">
+              <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> ou
+              <kbd>WASD</kbd> para andar. Nas salas azuis, <kbd>Espaço</kbd> ou
+              <kbd>↑</kbd> pula. <kbd>M</kbd> liga e desliga o som.
+            </p>
+          </div>
+          <button class="btn2" id="newBtn">Novo labirinto</button>
+          <button class="btn2" id="fullBtn" aria-pressed="false">
+            Tela cheia
+          </button>
+          <button class="btn2" id="musicBtn" aria-pressed="true">
+            Música: ligada
+          </button>
+          <p class="small" id="seedTxt"></p>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        /* ============ constantes ============ */
+        const TS = 32,
+          W = 20,
+          H = 13,
+          PW = W * TS,
+          PH = H * TS;
+        const COLS = 6,
+          ROWS = 4;
+        const DX = [0, 1, 0, -1],
+          DY = [-1, 0, 1, 0]; // 0 N, 1 L, 2 S, 3 O
+        const $ = (id) => document.getElementById(id);
+        const cv = $("game"),
+          ctx = cv.getContext("2d");
+        const mini = $("mini"),
+          mctx = mini.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+
+        /* ============ aleatório com semente ============ */
+        let rnd = Math.random;
+        function mulberry32(a) {
+          return function () {
+            a |= 0;
+            a = (a + 0x6d2b79f5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+        const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+        const pick = (a) => a[Math.floor(rnd() * a.length)];
+        const grid = (ch) => Array.from({ length: H }, () => Array(W).fill(ch));
+
+        /* ============ som ============ */
+        let ac = null,
+          muted = false,
+          musicEnabled = true,
+          musicGain = null,
+          musicTimer = null,
+          musicStep = 0,
+          nextMusicTime = 0;
+        const musicNotes = [
+          392, 523.25, 587.33, 523.25, 440, 587.33, 659.25, 587.33, 392, 523.25,
+          587.33, 783.99, 659.25, 587.33, 523.25, 440,
+        ];
+        function getAudioContext() {
+          ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+          if (ac.state === "suspended")
+            ac.resume().catch((error) => {
+              console.error("Não foi possível iniciar o áudio:", error);
+              toast("Não foi possível iniciar o áudio neste navegador");
+            });
+          return ac;
+        }
+        function setMusicVolume() {
+          if (!musicGain || !ac) return;
+          musicGain.gain.setTargetAtTime(
+            musicEnabled && !muted ? 0.07 : 0,
+            ac.currentTime,
+            0.08,
+          );
+        }
+        function playMusicNote(frequency, duration, type, volume, at) {
+          const o = ac.createOscillator(),
+            g = ac.createGain();
+          o.type = type;
+          o.frequency.setValueAtTime(frequency, at);
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.exponentialRampToValueAtTime(volume, at + 0.025);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+          o.connect(g);
+          g.connect(musicGain);
+          o.onended = () => {
+            o.disconnect();
+            g.disconnect();
+          };
+          o.start(at);
+          o.stop(at + duration);
+        }
+        function scheduleMusic() {
+          if (!ac || !musicEnabled || muted) return;
+          const notes = [130.81, 146.83, 164.81, 196];
+          while (nextMusicTime < ac.currentTime + 0.2) {
+            const step = musicStep++ % musicNotes.length;
+            const at = nextMusicTime;
+            playMusicNote(musicNotes[step], 0.22, "triangle", 0.18, at);
+            if (step % 4 === 0)
+              playMusicNote(
+                notes[Math.floor(step / 4) % notes.length],
+                0.5,
+                "sine",
+                0.2,
+                at,
+              );
+            nextMusicTime += 0.3;
+          }
+        }
+        function startMusic() {
+          if (!musicEnabled || muted) return;
+          try {
+            getAudioContext();
+            if (!musicGain) {
+              musicGain = ac.createGain();
+              musicGain.gain.value = 0;
+              musicGain.connect(ac.destination);
+            }
+            setMusicVolume();
+            if (!musicTimer) {
+              nextMusicTime = ac.currentTime;
+              musicTimer = setInterval(scheduleMusic, 100);
+              scheduleMusic();
+            }
+          } catch (error) {
+            console.error("Não foi possível reproduzir a música:", error);
+            toast("Não foi possível reproduzir a música neste navegador");
+          }
+        }
+        function beep(f, d, type = "square", vol = 0.04, slide = 0, delay = 0) {
+          if (muted) return;
+          try {
+            getAudioContext();
+            const t = ac.currentTime + delay,
+              o = ac.createOscillator(),
+              g = ac.createGain();
+            o.type = type;
+            o.frequency.setValueAtTime(f, t);
+            if (slide)
+              o.frequency.exponentialRampToValueAtTime(
+                Math.max(30, f + slide),
+                t + d,
+              );
+            g.gain.setValueAtTime(vol, t);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+            o.connect(g);
+            g.connect(ac.destination);
+            o.start(t);
+            o.stop(t + d);
+          } catch (e) {}
+        }
+        const sfx = {
+          jump: () => beep(320, 0.14, "square", 0.035, 320),
+          key: () => {
+            beep(660, 0.1, "triangle", 0.06);
+            beep(880, 0.1, "triangle", 0.06, 0, 0.08);
+            beep(1180, 0.18, "triangle", 0.06, 0, 0.16);
+          },
+          unlock: () => {
+            beep(180, 0.12, "sawtooth", 0.05);
+            beep(520, 0.2, "triangle", 0.06, 300, 0.1);
+          },
+          bump: () => beep(130, 0.1, "square", 0.04),
+          door: () => beep(260, 0.1, "triangle", 0.04, -120),
+          die: () => beep(300, 0.4, "sawtooth", 0.05, -250),
+          win: () =>
+            [523, 659, 784, 1046].forEach((f, i) =>
+              beep(f, 0.22, "triangle", 0.07, 0, i * 0.12),
+            ),
+        };
+
+        /* ============ geração do mundo ============ */
+        function buildMaze() {
+          const cells = [];
+          for (let y = 0; y < ROWS; y++)
+            for (let x = 0; x < COLS; x++)
+              cells.push({
+                x,
+                y,
+                id: y * COLS + x,
+                open: [false, false, false, false],
+                edge: [null, null, null, null],
+                v: false,
+                type: "td",
+                keys: [],
+                keyN: 0,
+                hasKey: false,
+                flag: null,
+              });
+          const at = (x, y) =>
+            x < 0 || y < 0 || x >= COLS || y >= ROWS
+              ? null
+              : cells[y * COLS + x];
+          const start = cells[ri(0, cells.length - 1)];
+          start.v = true;
+          const st = [start];
+          while (st.length) {
+            const c = st[st.length - 1],
+              opts = [];
+            for (let d = 0; d < 4; d++) {
+              const n = at(c.x + DX[d], c.y + DY[d]);
+              if (n && !n.v) opts.push([d, n]);
+            }
+            if (!opts.length) {
+              st.pop();
+              continue;
+            }
+            const [d, n] = pick(opts),
+              e = { locked: false, lockIndex: -1 };
+            c.open[d] = true;
+            n.open[(d + 2) % 4] = true;
+            c.edge[d] = e;
+            n.edge[(d + 2) % 4] = e;
+            n.v = true;
+            st.push(n);
+          }
+          return { cells, at, start };
+        }
+        const dirBetween = (a, b) => {
+          for (let d = 0; d < 4; d++)
+            if (a.x + DX[d] === b.x && a.y + DY[d] === b.y) return d;
+          return -1;
+        };
+
+        function tryBuild(force) {
+          const { cells, at, start } = buildMaze();
+          const dist = Array(cells.length).fill(-1),
+            par = Array(cells.length).fill(null);
+          const q = [start];
+          dist[start.id] = 0;
+          while (q.length) {
+            const c = q.shift();
+            for (let d = 0; d < 4; d++) {
+              if (!c.open[d]) continue;
+              const n = at(c.x + DX[d], c.y + DY[d]);
+              if (dist[n.id] < 0) {
+                dist[n.id] = dist[c.id] + 1;
+                par[n.id] = c;
+                q.push(n);
+              }
+            }
+          }
+          const maxD = Math.max(...dist);
+          const onlyEW = (c) => !c.open[0] && !c.open[2];
+          const deg = (c) => c.open.filter(Boolean).length;
+          const cand = cells.filter(
+            (c) =>
+              c !== start &&
+              onlyEW(c) &&
+              deg(c) === 1 &&
+              dist[c.id] >= maxD * 0.55,
+          );
+          let exit;
+          if (cand.length) {
+            cand.sort((a, b) => dist[b.id] - dist[a.id]);
+            exit = cand[0];
+          } else {
+            if (!force) return null;
+            exit = cells.reduce((a, b) => (dist[b.id] > dist[a.id] ? b : a));
+          }
+
+          const path = [];
+          for (let c = exit; c; c = par[c.id]) path.unshift(c);
+          if (path.length < 6 && !force) return null;
+
+          let pfCount = 0;
+          cells.forEach((c) => {
+            if (c === start) return;
+            if (c === exit && cand.length) {
+              c.type = "pf";
+              pfCount++;
+              return;
+            }
+            if (onlyEW(c) && rnd() < 0.8) {
+              c.type = "pf";
+              pfCount++;
+            }
+          });
+          if (pfCount < 3 && !force) return null;
+
+          // portas trancadas ao longo do caminho principal
+          const len = path.length,
+            wanted = len >= 9 ? 3 : 2,
+            locks = [];
+          for (let k = 0; k < wanted; k++) {
+            const idx = Math.min(
+              len - 2,
+              Math.floor(((k + 1) * (len - 1)) / (wanted + 1)),
+            );
+            const a = path[idx],
+              d = dirBetween(a, path[idx + 1]);
+            if (d < 0) continue;
+            const e = a.edge[d];
+            if (e.locked) continue;
+            e.locked = true;
+            e.lockIndex = locks.length;
+            locks.push(e);
+          }
+
+          // cada chave fica numa região alcançável sem cruzar aquela porta (nem as seguintes)
+          for (let k = 0; k < locks.length; k++) {
+            const seen = new Set([start.id]),
+              region = [start],
+              qq = [start];
+            while (qq.length) {
+              const c = qq.shift();
+              for (let d = 0; d < 4; d++) {
+                if (!c.open[d]) continue;
+                const ed = c.edge[d];
+                if (ed.lockIndex >= k) continue;
+                const n = at(c.x + DX[d], c.y + DY[d]);
+                if (!seen.has(n.id)) {
+                  seen.add(n.id);
+                  region.push(n);
+                  qq.push(n);
+                }
+              }
+            }
+            const cands = region.filter((c) => c !== exit && !c.hasKey);
+            const off = cands.filter((c) => !path.includes(c));
+            let room;
+            if (off.length && rnd() < 0.85) room = pick(off);
+            else if (cands.length) room = pick(cands);
+            else {
+              if (!force) return null;
+              room = start;
+            }
+            room.hasKey = true;
+            room.keyN++;
+          }
+
+          cells.forEach((c) => {
+            c.theme = c.type === "td" ? ri(0, 3) : ri(0, 2);
+            buildRoom(c, c === exit);
+          });
+          return { cells, at, start, exit, path, lockCount: locks.length };
+        }
+
+        function generate(seed) {
+          rnd = mulberry32(seed);
+          for (let a = 0; a < 400; a++) {
+            const w = tryBuild(a === 399);
+            if (w) return w;
+          }
+          return null;
+        }
+
+        function buildRoom(c, isExit) {
+          c.type === "td" ? buildTD(c, isExit) : buildPF(c, isExit);
+        }
+
+        function buildTD(c, isExit) {
+          const t = grid(".");
+          for (let x = 0; x < W; x++) {
+            t[0][x] = "#";
+            t[H - 1][x] = "#";
+          }
+          for (let y = 0; y < H; y++) {
+            t[y][0] = "#";
+            t[y][W - 1] = "#";
+          }
+          if (c.open[0]) {
+            t[0][9] = "D";
+            t[0][10] = "D";
+          }
+          if (c.open[2]) {
+            t[H - 1][9] = "D";
+            t[H - 1][10] = "D";
+          }
+          if (c.open[3]) {
+            t[6][0] = "D";
+            t[7][0] = "D";
+          }
+          if (c.open[1]) {
+            t[6][W - 1] = "D";
+            t[7][W - 1] = "D";
+          }
+          const n = ri(5, 9);
+          for (let i = 0; i < n; i++) {
+            const qx = rnd() < 0.5 ? [1, 7] : [12, 18],
+              qy = rnd() < 0.5 ? [1, 4] : [9, 11];
+            const bw = ri(1, 3),
+              bh = ri(1, 2);
+            const x0 = ri(qx[0], qx[1] - bw + 1),
+              y0 = ri(qy[0], qy[1] - bh + 1);
+            for (let yy = y0; yy < y0 + bh; yy++)
+              for (let xx = x0; xx < x0 + bw; xx++) t[yy][xx] = "#";
+          }
+          // áreas alcançáveis a partir do centro
+          const seen = grid(false),
+            reach = [],
+            st = [[9, 6]];
+          seen[6][9] = true;
+          while (st.length) {
+            const [x, y] = st.pop();
+            reach.push({ x, y });
+            for (let d = 0; d < 4; d++) {
+              const nx = x + DX[d],
+                ny = y + DY[d];
+              if (
+                nx < 0 ||
+                ny < 0 ||
+                nx >= W ||
+                ny >= H ||
+                seen[ny][nx] ||
+                t[ny][nx] !== "."
+              )
+                continue;
+              seen[ny][nx] = true;
+              st.push([nx, ny]);
+            }
+          }
+          let far = reach.filter((p) => Math.hypot(p.x - 9.5, p.y - 6.5) > 4.5);
+          if (!far.length) far = reach.slice();
+          const spot = () => {
+            const i = Math.floor(rnd() * far.length),
+              p = far.splice(i, 1)[0] || reach[0];
+            return { x: p.x * TS + TS / 2, y: p.y * TS + TS / 2 };
+          };
+          for (let i = 0; i < c.keyN; i++) {
+            const s = spot();
+            c.keys.push({ x: s.x, y: s.y, taken: false });
+          }
+          if (isExit) {
+            const s = spot();
+            c.flag = { x: s.x, y: s.y };
+          }
+          c.tiles = t;
+          c.specks = [];
+          for (let i = 0; i < 16; i++) {
+            const x = ri(TS + 4, PW - TS - 8),
+              y = ri(TS + 4, PH - TS - 8);
+            if (t[Math.floor(y / TS)][Math.floor(x / TS)] === ".")
+              c.specks.push({ x, y, s: ri(2, 4) });
+          }
+        }
+
+        function buildPF(c, isExit) {
+          const t = grid(".");
+          for (let y = 0; y < H; y++) {
+            t[y][0] = "#";
+            t[y][W - 1] = "#";
+          }
+          for (let x = 0; x < W; x++) t[0][x] = "#";
+          const reserved = Array(W).fill(false);
+          for (let x = 0; x <= 3; x++) reserved[x] = true;
+          for (let x = 16; x < W; x++) reserved[x] = true;
+          let cc = -1;
+          if (c.keyN > 0) {
+            cc = ri(3, 11);
+            for (let x = cc - 1; x <= cc + 7; x++) reserved[x] = true;
+          }
+          let fc = -1;
+          if (isExit) {
+            fc = c.open[3] ? 16 : 3;
+            for (let x = fc - 2; x <= fc + 2; x++)
+              if (x >= 0 && x < W) reserved[x] = true;
+          }
+
+          const pit = Array(W).fill(false);
+          const blocked = (a, b) => {
+            for (let x = a; x <= b; x++) if (reserved[x]) return true;
+            return false;
+          };
+          let x = 4;
+          while (x <= 14) {
+            if (rnd() < 0.55) {
+              const wd = ri(2, 3);
+              if (x + wd - 1 <= 15 && !blocked(x - 1, x + wd)) {
+                for (let i = 0; i < wd; i++) pit[x + i] = true;
+                x += wd + 3;
+              } else x += 1;
+            } else x += 2;
+          }
+          for (let xx = 1; xx < W - 1; xx++)
+            if (!pit[xx]) {
+              t[11][xx] = "#";
+              t[12][xx] = "#";
+            }
+          if (c.open[3]) {
+            t[9][0] = "D";
+            t[10][0] = "D";
+          }
+          if (c.open[1]) {
+            t[9][W - 1] = "D";
+            t[10][W - 1] = "D";
+          }
+
+          const used = Array(W).fill(false);
+          if (cc >= 0) {
+            for (let i = 0; i < 3; i++) t[8][cc + i] = "P";
+            for (let i = 3; i <= 6; i++) t[6][cc + i] = "P";
+            for (let xx = cc - 1; xx <= cc + 7; xx++) used[xx] = true;
+            c.keys.push({ x: (cc + 5) * TS, y: 6 * TS - 16, taken: false });
+          }
+          for (let i = 0; i < 4; i++) {
+            const w = ri(3, 4),
+              x0 = ri(2, 14),
+              row = pick([8, 9]);
+            let ok = x0 + w <= 18;
+            for (let k = x0 - 1; k <= x0 + w && ok; k++)
+              if (used[k]) ok = false;
+            if (!ok) continue;
+            for (let k = 0; k < w; k++) {
+              t[row][x0 + k] = "P";
+            }
+            for (let k = x0 - 1; k <= x0 + w; k++) used[k] = true;
+          }
+          if (isExit) c.flag = { x: fc * TS + TS / 2, y: 11 * TS };
+          c.tiles = t;
+          c.hseed = rnd() * 10;
+          c.clouds = Array.from({ length: 4 }, () => ({
+            x: rnd() * PW,
+            y: 30 + rnd() * 110,
+            s: 0.7 + rnd() * 0.8,
+            v: 4 + rnd() * 8,
+          }));
+          c.stars = Array.from({ length: 36 }, () => ({
+            x: rnd() * PW,
+            y: rnd() * 230,
+            r: 0.6 + rnd() * 1.4,
+            p: rnd() * 6,
+          }));
+        }
+
+        /* ============ estado do jogo ============ */
+        const P = {
+          x: 0,
+          y: 0,
+          w: 22,
+          h: 24,
+          vx: 0,
+          vy: 0,
+          face: 1,
+          fx: 0,
+          fy: 1,
+          onGround: false,
+          coyote: 0,
+          buf: 0,
+          keys: 0,
+          spawn: { x: 0, y: 0 },
+          moving: false,
+        };
+        let world = null,
+          cur = null,
+          state = "menu",
+          visited = new Set(),
+          seed = 0;
+        let tStart = 0,
+          tElapsed = 0,
+          time = 0,
+          shake = 0,
+          fade = 0,
+          lastHint = -9,
+          particles = [];
+
+        /* ============ entrada ============ */
+        const kb = {},
+          tc = {};
+        const inp = {
+          get left() {
+            return kb.ArrowLeft || kb.KeyA || tc.left;
+          },
+          get right() {
+            return kb.ArrowRight || kb.KeyD || tc.right;
+          },
+          get up() {
+            return kb.ArrowUp || kb.KeyW || tc.up;
+          },
+          get down() {
+            return kb.ArrowDown || kb.KeyS || tc.down;
+          },
+          get jumpHeld() {
+            return kb.Space || kb.ArrowUp || kb.KeyW || tc.jump || tc.up;
+          },
+          jp: false,
+        };
+        addEventListener("keydown", (e) => {
+          if (
+            [
+              "ArrowUp",
+              "ArrowDown",
+              "ArrowLeft",
+              "ArrowRight",
+              "Space",
+            ].includes(e.code)
+          )
+            e.preventDefault();
+          if (e.code === "KeyM") {
+            muted = !muted;
+            setMusicVolume();
+            if (!muted) startMusic();
+            toast(muted ? "Som desligado" : "Som ligado");
+            return;
+          }
+          if ((e.code === "Enter" || e.code === "Space") && state !== "play") {
+            begin(state === "won");
+            return;
+          }
+          if (!e.repeat && ["Space", "ArrowUp", "KeyW"].includes(e.code))
+            inp.jp = true;
+          kb[e.code] = true;
+        });
+        addEventListener("keyup", (e) => {
+          kb[e.code] = false;
+        });
+        addEventListener("blur", () => {
+          for (const k in kb) kb[k] = false;
+          for (const k in tc) tc[k] = false;
+        });
+
+        document.querySelectorAll(".tbtn").forEach((b) => {
+          const k = b.dataset.k;
+          const on = (e) => {
+            e.preventDefault();
+            tc[k] = true;
+            b.classList.add("on");
+            if (k === "jump" || k === "up") inp.jp = true;
+            if (state !== "play") begin(state === "won");
+          };
+          const off = (e) => {
+            tc[k] = false;
+            b.classList.remove("on");
+          };
+          b.addEventListener("pointerdown", on);
+          ["pointerup", "pointercancel", "pointerleave"].forEach((ev) =>
+            b.addEventListener(ev, off),
+          );
+          b.addEventListener("contextmenu", (e) => e.preventDefault());
+        });
+
+        /* ============ colisão ============ */
+        function tileCh(room, tx, ty) {
+          if (tx < 0 || tx >= W || ty < 0) return "#";
+          if (ty >= H) return room.type === "pf" ? "." : "#";
+          return room.tiles[ty][tx];
+        }
+        function doorDir(tx, ty) {
+          if (ty === 0) return 0;
+          if (tx === W - 1) return 1;
+          if (ty === H - 1) return 2;
+          return 3;
+        }
+        function doorEdge(room, tx, ty) {
+          return room.edge[doorDir(tx, ty)];
+        }
+        function isSolid(room, tx, ty) {
+          const ch = tileCh(room, tx, ty);
+          if (ch === "#") return true;
+          if (ch === "D") {
+            const e = doorEdge(room, tx, ty);
+            if (!e.locked) return false;
+            if (P.keys > 0) {
+              e.locked = false;
+              P.keys--;
+              sfx.unlock();
+              emit(P.x + P.w / 2, P.y + P.h / 2, "#ffd34d", 24);
+              toast("Porta destrancada!");
+              return false;
+            }
+            if (time - lastHint > 1.4) {
+              lastHint = time;
+              sfx.bump();
+              toast("Porta trancada. Procure uma chave 🔑");
+            }
+            return true;
+          }
+          return false;
+        }
+        function stepX(dt) {
+          P.x += P.vx * dt;
+          const y0 = Math.floor(P.y / TS),
+            y1 = Math.floor((P.y + P.h - 0.01) / TS);
+          const x0 = Math.floor(P.x / TS),
+            x1 = Math.floor((P.x + P.w - 0.01) / TS);
+          for (let ty = y0; ty <= y1; ty++)
+            for (let tx = x0; tx <= x1; tx++) {
+              if (isSolid(cur, tx, ty)) {
+                if (P.vx > 0) P.x = tx * TS - P.w;
+                else if (P.vx < 0) P.x = (tx + 1) * TS;
+                P.vx = 0;
+                return;
+              }
+            }
+        }
+        function stepY(dt) {
+          const prevBottom = P.y + P.h;
+          P.y += P.vy * dt;
+          const y0 = Math.floor(P.y / TS),
+            y1 = Math.floor((P.y + P.h - 0.01) / TS);
+          const x0 = Math.floor(P.x / TS),
+            x1 = Math.floor((P.x + P.w - 0.01) / TS);
+          for (let ty = y0; ty <= y1; ty++)
+            for (let tx = x0; tx <= x1; tx++) {
+              if (tileCh(cur, tx, ty) === "P") {
+                if (P.vy > 0 && prevBottom <= ty * TS + 0.5) {
+                  P.y = ty * TS - P.h;
+                  P.vy = 0;
+                  P.onGround = true;
+                }
+                continue;
+              }
+              if (isSolid(cur, tx, ty)) {
+                if (P.vy > 0) {
+                  P.y = ty * TS - P.h;
+                  P.onGround = true;
+                } else if (P.vy < 0) {
+                  P.y = (ty + 1) * TS;
+                }
+                P.vy = 0;
+                return;
+              }
+            }
+        }
+
+        /* ============ atualização ============ */
+        function placeIn(room, d) {
+          if (room.type === "td") {
+            const cy = 7 * TS - P.h / 2,
+              cx = PW / 2 - P.w / 2;
+            if (d < 0) {
+              P.x = cx;
+              P.y = cy;
+            } else if (d === 1) {
+              P.x = TS + 6;
+              P.y = cy;
+            } else if (d === 3) {
+              P.x = PW - TS - P.w - 6;
+              P.y = cy;
+            } else if (d === 2) {
+              P.x = cx;
+              P.y = TS + 6;
+            } else {
+              P.x = cx;
+              P.y = PH - TS - P.h - 6;
+            }
+          } else {
+            P.y = 11 * TS - P.h - 0.01;
+            P.x = d === 3 ? PW - TS - P.w - 6 : TS + 6;
+          }
+          P.vx = P.vy = 0;
+          P.spawn = { x: P.x, y: P.y };
+        }
+        function go(d) {
+          const n = world.at(cur.x + DX[d], cur.y + DY[d]);
+          if (!n) return;
+          const first = !visited.has(n.id);
+          cur = n;
+          visited.add(n.id);
+          placeIn(n, d);
+          fade = 1;
+          sfx.door();
+          particles = [];
+          if (first && n.type === "pf")
+            toast("Sala de plataforma: corra e pule!");
+          else if (first && n.flag) toast("Você achou a bandeira. Vá até ela!");
+        }
+        function checkTransition() {
+          const tx = Math.floor((P.x + P.w / 2) / TS),
+            ty = Math.floor((P.y + P.h / 2) / TS);
+          if (tx < 0 || tx >= W || ty < 0 || ty >= H) return;
+          if (cur.tiles[ty][tx] !== "D") return;
+          go(doorDir(tx, ty));
+        }
+        function update(dt) {
+          const room = cur,
+            pf = room.type === "pf";
+          if (inp.jp) {
+            P.buf = 0.12;
+            inp.jp = false;
+          } else P.buf -= dt;
+
+          if (pf) {
+            const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+            P.vx += (dir * 190 - P.vx) * Math.min(1, dt * (dir ? 16 : 22));
+            if (dir) P.face = dir;
+            P.coyote = P.onGround ? 0.1 : P.coyote - dt;
+            if (P.buf > 0 && P.coyote > 0) {
+              P.vy = -680;
+              P.buf = 0;
+              P.coyote = 0;
+              P.onGround = false;
+              sfx.jump();
+            }
+            if (!inp.jumpHeld && P.vy < -230) P.vy = -230;
+            P.vy = Math.min(P.vy + 1900 * dt, 900);
+            P.onGround = false;
+            P.moving = Math.abs(P.vx) > 20;
+          } else {
+            let dx = (inp.right ? 1 : 0) - (inp.left ? 1 : 0),
+              dy = (inp.down ? 1 : 0) - (inp.up ? 1 : 0);
+            if (dx && dy) {
+              dx *= 0.7071;
+              dy *= 0.7071;
+            }
+            P.vx = dx * 175;
+            P.vy = dy * 175;
+            if (dx || dy) {
+              P.fx = dx;
+              P.fy = dy;
+            }
+            P.moving = !!(dx || dy);
+          }
+          stepX(dt);
+          stepY(dt);
+          checkTransition();
+          if (cur !== room) return;
+
+          const px = P.x + P.w / 2,
+            py = P.y + P.h / 2;
+          for (const k of room.keys) {
+            if (
+              !k.taken &&
+              Math.abs(px - k.x) < 18 &&
+              Math.abs(py - k.y) < 20
+            ) {
+              k.taken = true;
+              P.keys++;
+              sfx.key();
+              emit(k.x, k.y, "#ffd34d", 22);
+              toast("Chave coletada!");
+            }
+          }
+          if (room.flag) {
+            const f = room.flag;
+            const hit = pf
+              ? Math.abs(px - f.x) < 20 && py > f.y - 80 && py < f.y
+              : Math.abs(px - f.x) < 20 && Math.abs(py - f.y) < 24;
+            if (hit) return win();
+          }
+          if (pf && P.y > PH + 10) {
+            P.x = P.spawn.x;
+            P.y = P.spawn.y;
+            P.vx = P.vy = 0;
+            shake = 0.35;
+            sfx.die();
+            toast("Caiu! De volta à entrada da sala.");
+          }
+        }
+        function win() {
+          state = "won";
+          tElapsed = performance.now() - tStart;
+          sfx.win();
+          emit(cur.flag.x, cur.flag.y - 30, "#ff4d6d", 40);
+          showOverlay(`<h2>Bandeira alcançada! 🚩</h2>
+    <p>Você atravessou o labirinto em <b style="color:var(--ink)">${fmt(tElapsed)}</b>, passando por ${visited.size} de ${world.cells.length} salas.</p>
+    <button class="main" id="playBtn">Jogar em um novo labirinto</button>`);
+        }
+
+        /* ============ partículas ============ */
+        function emit(x, y, color, n) {
+          for (let i = 0; i < n; i++) {
+            const a = Math.random() * 6.28,
+              s = 40 + Math.random() * 130;
+            particles.push({
+              x,
+              y,
+              vx: Math.cos(a) * s,
+              vy: Math.sin(a) * s - 40,
+              life: 0.5 + Math.random() * 0.5,
+              max: 1,
+              color,
+            });
+          }
+        }
+        function updParticles(dt) {
+          for (const p of particles) {
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy += 260 * dt;
+            p.life -= dt;
+          }
+          particles = particles.filter((p) => p.life > 0);
+        }
+
+        /* ============ desenho ============ */
+        const TD_THEMES = [
+          {
+            a: "#3a3355",
+            b: "#342e4d",
+            w: "#5d5390",
+            wt: "#7a6fb5",
+            spk: "#4a4270",
+          },
+          {
+            a: "#2f4a3a",
+            b: "#2a4234",
+            w: "#4f7550",
+            wt: "#6e9a68",
+            spk: "#3d5f48",
+          },
+          {
+            a: "#4d3b2f",
+            b: "#44342a",
+            w: "#86654a",
+            wt: "#a8825f",
+            spk: "#5d4838",
+          },
+          {
+            a: "#2d4650",
+            b: "#283e47",
+            w: "#4f7f8c",
+            wt: "#6fa3b0",
+            spk: "#3b5d69",
+          },
+        ];
+        const PF_THEMES = [
+          {
+            top: "#5cb8ff",
+            bot: "#d9f2ff",
+            hill: "#8fd0a3",
+            hill2: "#6fbf8a",
+            cloud: "#ffffff",
+            night: false,
+            grass: "#58c25a",
+            dirt: "#8a5a3c",
+            dirt2: "#7a4e33",
+          },
+          {
+            top: "#ff8f70",
+            bot: "#ffe0a8",
+            hill: "#d9915f",
+            hill2: "#b97449",
+            cloud: "#fff1dc",
+            night: false,
+            grass: "#9bbf4a",
+            dirt: "#7b4a38",
+            dirt2: "#6a3f2f",
+          },
+          {
+            top: "#141a45",
+            bot: "#4b3a82",
+            hill: "#2b2f6b",
+            hill2: "#212558",
+            cloud: "#6a5fa6",
+            night: true,
+            grass: "#3f9d6b",
+            dirt: "#4a3a5f",
+            dirt2: "#3d3050",
+          },
+        ];
+        function rr(x, y, w, h, r) {
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+        }
+
+        function lockPos(room, tx, ty) {
+          if (room.tiles[ty][tx] !== "D") return null;
+          if ((ty === 0 || ty === H - 1) && tx === 9)
+            return [(tx + 1) * TS, ty * TS + TS / 2];
+          if (tx === 0 || tx === W - 1) {
+            const first = room.type === "pf" ? 9 : 6;
+            if (ty === first) return [tx * TS + TS / 2, (ty + 1) * TS];
+          }
+          return null;
+        }
+        function drawDoor(room, tx, ty) {
+          const x = tx * TS,
+            y = ty * TS,
+            e = doorEdge(room, tx, ty);
+          if (e.locked) {
+            ctx.fillStyle = "#5b3d0c";
+            ctx.fillRect(x, y, TS, TS);
+            ctx.fillStyle = "#f2c230";
+            for (let i = 0; i < 4; i++)
+              ctx.fillRect(x + 3 + i * 8, y + 1, 4, TS - 2);
+            ctx.fillStyle = "rgba(255,255,255,.35)";
+            for (let i = 0; i < 4; i++)
+              ctx.fillRect(x + 3 + i * 8, y + 1, 1, TS - 2);
+            const lp = lockPos(room, tx, ty);
+            if (lp) {
+              const [lx, ly] = lp;
+              ctx.strokeStyle = "#fff3c4";
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(lx, ly - 6, 6, Math.PI, 0);
+              ctx.stroke();
+              ctx.fillStyle = "#ffe08a";
+              rr(lx - 9, ly - 5, 18, 14, 3);
+              ctx.fill();
+              ctx.fillStyle = "#5b3d0c";
+              ctx.beginPath();
+              ctx.arc(lx, ly + 0.5, 2.4, 0, 6.3);
+              ctx.fill();
+              ctx.fillRect(lx - 1, ly + 1, 2, 5);
+            }
+          } else if (room.type === "pf") {
+            ctx.fillStyle = "rgba(15,12,35,.72)";
+            ctx.fillRect(x, y, TS, TS);
+          } else {
+            ctx.fillStyle = "rgba(255,255,255,.08)";
+            ctx.fillRect(x, y, TS, TS);
+          }
+        }
+
+        function drawTD(room) {
+          const th = TD_THEMES[room.theme];
+          for (let ty = 0; ty < H; ty++)
+            for (let tx = 0; tx < W; tx++) {
+              const ch = room.tiles[ty][tx],
+                x = tx * TS,
+                y = ty * TS;
+              if (ch === "#") {
+                const below = ty + 1 < H ? room.tiles[ty + 1][tx] : "#";
+                ctx.fillStyle = th.wt;
+                ctx.fillRect(x, y, TS, TS);
+                if (below !== "#") {
+                  ctx.fillStyle = th.w;
+                  ctx.fillRect(x, y + TS - 9, TS, 9);
+                  ctx.fillStyle = "rgba(0,0,0,.18)";
+                  ctx.fillRect(x, y + TS - 9, TS, 2);
+                }
+                ctx.fillStyle = "rgba(0,0,0,.1)";
+                ctx.fillRect(x + TS / 2, y, 1, TS - 9);
+              } else {
+                ctx.fillStyle = (tx + ty) & 1 ? th.a : th.b;
+                ctx.fillRect(x, y, TS, TS);
+                if (ch === "D") drawDoor(room, tx, ty);
+              }
+            }
+          ctx.fillStyle = th.spk;
+          for (const s of room.specks) ctx.fillRect(s.x, s.y, s.s, s.s);
+          // sombra das paredes internas
+          ctx.fillStyle = "rgba(0,0,0,.16)";
+          for (let ty = 1; ty < H - 1; ty++)
+            for (let tx = 1; tx < W - 1; tx++)
+              if (room.tiles[ty][tx] === "." && room.tiles[ty - 1][tx] === "#")
+                ctx.fillRect(tx * TS, ty * TS, TS, 5);
+        }
+
+        function drawPF(room) {
+          const th = PF_THEMES[room.theme];
+          const g = ctx.createLinearGradient(0, 0, 0, PH);
+          g.addColorStop(0, th.top);
+          g.addColorStop(1, th.bot);
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, PW, PH);
+          if (th.night) {
+            ctx.fillStyle = "#fff";
+            for (const s of room.stars) {
+              ctx.globalAlpha = 0.5 + 0.5 * Math.sin(time * 2 + s.p);
+              ctx.fillRect(s.x, s.y, s.r, s.r);
+            }
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = "#fdf6c8";
+            ctx.beginPath();
+            ctx.arc(510, 80, 26, 0, 6.3);
+            ctx.fill();
+            ctx.fillStyle = th.top;
+            ctx.beginPath();
+            ctx.arc(521, 74, 22, 0, 6.3);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = "rgba(255,246,190,.9)";
+            ctx.beginPath();
+            ctx.arc(520, 76, 28, 0, 6.3);
+            ctx.fill();
+          }
+          for (const c of room.clouds) {
+            const cx = ((c.x + time * c.v) % (PW + 160)) - 80;
+            ctx.fillStyle = th.cloud;
+            ctx.globalAlpha = th.night ? 0.35 : 0.85;
+            ctx.beginPath();
+            ctx.arc(cx, c.y, 16 * c.s, 0, 6.3);
+            ctx.arc(cx + 18 * c.s, c.y + 4, 13 * c.s, 0, 6.3);
+            ctx.arc(cx - 18 * c.s, c.y + 5, 12 * c.s, 0, 6.3);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+          [
+            [th.hill2, 300, 0.011, 30, 0],
+            [th.hill, 330, 0.017, 22, 2],
+          ].forEach(([col, base, f, a, o]) => {
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(0, PH);
+            for (let x = 0; x <= PW; x += 8)
+              ctx.lineTo(x, base + Math.sin(x * f + room.hseed + o) * a);
+            ctx.lineTo(PW, PH);
+            ctx.fill();
+          });
+          // buracos com lava
+          for (let tx = 1; tx < W - 1; tx++)
+            if (room.tiles[11][tx] === ".") {
+              const lg = ctx.createLinearGradient(0, 11 * TS, 0, PH);
+              lg.addColorStop(0, "#150b2a");
+              lg.addColorStop(0.55, "#5a1633");
+              lg.addColorStop(1, "#ff6a2a");
+              ctx.fillStyle = lg;
+              ctx.fillRect(tx * TS, 11 * TS, TS, 2 * TS);
+              ctx.fillStyle = "rgba(255,170,60,.7)";
+              ctx.fillRect(
+                tx * TS + 4 + Math.sin(time * 3 + tx) * 3,
+                PH - 6,
+                10,
+                3,
+              );
+            }
+          for (let ty = 0; ty < H; ty++)
+            for (let tx = 0; tx < W; tx++) {
+              const ch = room.tiles[ty][tx],
+                x = tx * TS,
+                y = ty * TS;
+              if (ch === "#") {
+                const brick = tx === 0 || tx === W - 1 || ty === 0;
+                const above = ty > 0 ? room.tiles[ty - 1][tx] : "#";
+                if (brick) {
+                  ctx.fillStyle = "#6c6a86";
+                  ctx.fillRect(x, y, TS, TS);
+                  ctx.fillStyle = "#57556f";
+                  ctx.fillRect(x, y + TS / 2 - 1, TS, 2);
+                  ctx.fillRect(x + (ty & 1 ? 8 : 22), y, 2, TS / 2);
+                  ctx.fillRect(x + (ty & 1 ? 22 : 8), y + TS / 2, 2, TS / 2);
+                  if (above !== "#") {
+                    ctx.fillStyle = "#8c8aa8";
+                    ctx.fillRect(x, y, TS, 4);
+                  }
+                } else {
+                  ctx.fillStyle = ty >= 12 ? th.dirt2 : th.dirt;
+                  ctx.fillRect(x, y, TS, TS);
+                  ctx.fillStyle = "rgba(0,0,0,.12)";
+                  ctx.fillRect(x + 6 + ((tx * 7) % 11), y + 12, 4, 4);
+                  ctx.fillRect(x + 18 - ((tx * 5) % 9), y + 22, 5, 3);
+                  if (above !== "#") {
+                    ctx.fillStyle = th.grass;
+                    ctx.fillRect(x, y, TS, 8);
+                    ctx.fillStyle = "rgba(255,255,255,.22)";
+                    ctx.fillRect(x, y, TS, 2);
+                    ctx.fillStyle = th.grass;
+                    for (let b = 0; b < 4; b++)
+                      ctx.fillRect(x + 3 + b * 8, y + 8, 4, 3);
+                  }
+                }
+              } else if (ch === "P") {
+                ctx.fillStyle = "#b07a45";
+                ctx.fillRect(x, y, TS, 11);
+                ctx.fillStyle = "#d9a063";
+                ctx.fillRect(x, y, TS, 3);
+                ctx.fillStyle = "#6e4522";
+                ctx.fillRect(x + 3, y + 6, 3, 3);
+                ctx.fillRect(x + TS - 6, y + 6, 3, 3);
+                ctx.fillStyle = "rgba(0,0,0,.18)";
+                ctx.fillRect(x, y + 11, TS, 2);
+              } else if (ch === "D") {
+                drawDoor(room, tx, ty);
+              }
+            }
+        }
+
+        function drawKey(x, y) {
+          const b = Math.sin(time * 3) * 3;
+          ctx.save();
+          ctx.translate(x, y + b);
+          const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
+          gl.addColorStop(0, "rgba(255,215,80,.55)");
+          gl.addColorStop(1, "rgba(255,215,80,0)");
+          ctx.fillStyle = gl;
+          ctx.fillRect(-24, -24, 48, 48);
+          ctx.strokeStyle = "#ffd34d";
+          ctx.lineWidth = 3.2;
+          ctx.beginPath();
+          ctx.arc(-7, 0, 5, 0, 6.3);
+          ctx.stroke();
+          ctx.fillStyle = "#ffd34d";
+          ctx.fillRect(-2, -1.6, 17, 3.2);
+          ctx.fillRect(9, 1.5, 3, 5);
+          ctx.fillRect(13, 1.5, 3, 4);
+          ctx.restore();
+        }
+        function drawFlag(x, base, s) {
+          ctx.save();
+          ctx.translate(x, base);
+          ctx.scale(s, s);
+          ctx.fillStyle = "rgba(0,0,0,.2)";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 12, 4, 0, 0, 6.3);
+          ctx.fill();
+          ctx.fillStyle = "#eceaf5";
+          ctx.fillRect(-2, -74, 4, 74);
+          ctx.fillStyle = "#ffd34d";
+          ctx.beginPath();
+          ctx.arc(0, -76, 4, 0, 6.3);
+          ctx.fill();
+          const top = -72;
+          ctx.fillStyle = "#ff4d6d";
+          ctx.beginPath();
+          for (let i = 0; i <= 30; i += 3)
+            ctx.lineTo(2 + i, top + Math.sin(time * 6 + i * 0.25) * 2.6);
+          for (let i = 30; i >= 0; i -= 3)
+            ctx.lineTo(2 + i, top + 24 + Math.sin(time * 6 + i * 0.25) * 2.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,.85)";
+          ctx.fillRect(8, top + 8 + Math.sin(time * 6 + 2) * 2, 8, 8);
+          ctx.restore();
+        }
+        function drawPlayer(pf) {
+          const x = Math.round(P.x),
+            y = Math.round(P.y),
+            w = P.w,
+            h = P.h;
+          if (!pf) {
+            ctx.fillStyle = "rgba(0,0,0,.28)";
+            ctx.beginPath();
+            ctx.ellipse(x + w / 2, y + h - 1, w / 2, 5, 0, 0, 6.3);
+            ctx.fill();
+          }
+          const step = P.moving ? Math.sin(time * 16) * 3 : 0;
+          ctx.fillStyle = "#3b2a63";
+          ctx.fillRect(x + 3, y + h - 5, 6, 5 + (step > 0 ? -1 : 0));
+          ctx.fillRect(x + w - 9, y + h - 5, 6, 5 + (step < 0 ? -1 : 0));
+          ctx.fillStyle = "#ff7a59";
+          rr(x, y + 4, w, h - 8, 6);
+          ctx.fill();
+          ctx.fillStyle = "#d9553a";
+          rr(x - 1, y, w + 2, 10, 5);
+          ctx.fill();
+          ctx.fillStyle = "#ffe6cf";
+          ctx.fillRect(x + 3, y + 6, w - 6, 8);
+          const ex = pf ? P.face * 2 : Math.sign(P.fx) * 2,
+            ey = pf ? 0 : Math.sign(P.fy) * 1;
+          ctx.fillStyle = "#2a1f4a";
+          ctx.fillRect(x + 6 + ex, y + 8 + ey, 3, 3);
+          ctx.fillRect(x + w - 9 + ex, y + 8 + ey, 3, 3);
+          if (P.keys > 0) {
+            ctx.fillStyle = "#ffd34d";
+            ctx.fillRect(x + w - 5, y + h - 12, 4, 6);
+          }
+        }
+        function hudChip() {
+          const pf = cur.type === "pf",
+            label = pf ? "Plataforma" : "Top-down";
+          ctx.font = "bold 12px system-ui,sans-serif";
+          ctx.textBaseline = "middle";
+          const tw = ctx.measureText(label).width;
+          ctx.fillStyle = "rgba(15,10,35,.7)";
+          rr(8, 8, tw + 34, 24, 12);
+          ctx.fill();
+          ctx.fillStyle = pf ? "#46b4ef" : "#9c7bf0";
+          rr(16, 16, 9, 9, 3);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.fillText(label, 31, 20.5);
+          const kt = "× " + P.keys;
+          const kw = ctx.measureText(kt).width;
+          ctx.fillStyle = "rgba(15,10,35,.7)";
+          rr(PW - kw - 52, 8, kw + 44, 24, 12);
+          ctx.fill();
+          ctx.save();
+          ctx.translate(PW - kw - 38, 20);
+          ctx.scale(0.7, 0.7);
+          ctx.strokeStyle = "#ffd34d";
+          ctx.lineWidth = 3.2;
+          ctx.beginPath();
+          ctx.arc(-7, 0, 5, 0, 6.3);
+          ctx.stroke();
+          ctx.fillStyle = "#ffd34d";
+          ctx.fillRect(-2, -1.6, 17, 3.2);
+          ctx.fillRect(9, 1.5, 3, 5);
+          ctx.restore();
+          ctx.fillStyle = "#fff";
+          ctx.fillText(kt, PW - kw - 22, 20.5);
+        }
+        function render() {
+          ctx.save();
+          ctx.clearRect(0, 0, PW, PH);
+          if (shake > 0) {
+            ctx.translate(
+              (Math.random() - 0.5) * shake * 14,
+              (Math.random() - 0.5) * shake * 14,
+            );
+          }
+          const pf = cur.type === "pf";
+          pf ? drawPF(cur) : drawTD(cur);
+          for (const k of cur.keys) if (!k.taken) drawKey(k.x, k.y);
+          if (cur.flag)
+            pf
+              ? drawFlag(cur.flag.x, cur.flag.y, 1)
+              : drawFlag(cur.flag.x, cur.flag.y + 16, 0.7);
+          drawPlayer(pf);
+          for (const p of particles) {
+            ctx.globalAlpha = Math.max(0, p.life * 1.6);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, 3, 3);
+          }
+          ctx.globalAlpha = 1;
+          ctx.restore();
+          hudChip();
+          if (fade > 0) {
+            ctx.fillStyle = `rgba(10,6,24,${fade})`;
+            ctx.fillRect(0, 0, PW, PH);
+          }
+        }
+
+        /* ============ minimapa ============ */
+        function drawMini() {
+          const g = mctx,
+            cs = 36,
+            ox = 12,
+            oy = 12,
+            sz = 26;
+          g.clearRect(0, 0, mini.width, mini.height);
+          const known = new Set();
+          for (const id of visited) {
+            known.add(id);
+            const c = world.cells[id];
+            for (let d = 0; d < 4; d++)
+              if (c.open[d]) known.add(world.at(c.x + DX[d], c.y + DY[d]).id);
+          }
+          for (const c of world.cells) {
+            for (const d of [1, 2]) {
+              if (!c.open[d]) continue;
+              const n = world.at(c.x + DX[d], c.y + DY[d]);
+              if (!visited.has(c.id) && !visited.has(n.id)) continue;
+              const e = c.edge[d],
+                x = ox + c.x * cs,
+                y = oy + c.y * cs;
+              g.fillStyle = e.locked ? "#f2c230" : "rgba(150,140,190,.85)";
+              if (d === 1)
+                g.fillRect(x + sz - 1, y + sz / 2 - 2, cs - sz + 2, 4);
+              else g.fillRect(x + sz / 2 - 2, y + sz - 1, 4, cs - sz + 2);
+            }
+          }
+          for (const c of world.cells) {
+            if (!known.has(c.id)) continue;
+            const x = ox + c.x * cs,
+              y = oy + c.y * cs,
+              v = visited.has(c.id);
+            if (v) {
+              g.fillStyle = c.type === "pf" ? "#2aa3e6" : "#8a5fe8";
+              rr2(g, x, y, sz, sz, 6);
+              g.fill();
+              if (c.flag) {
+                g.fillStyle = "#fff";
+                g.fillRect(x + 10, y + 5, 2, 16);
+                g.fillStyle = "#ff4d6d";
+                g.fillRect(x + 12, y + 5, 8, 6);
+              }
+              if (c.keys.some((k) => !k.taken)) {
+                g.fillStyle = "#ffd34d";
+                g.beginPath();
+                g.arc(x + sz - 5, y + 5, 4, 0, 6.3);
+                g.fill();
+              }
+            } else {
+              g.strokeStyle = "rgba(150,140,190,.7)";
+              g.setLineDash([3, 3]);
+              g.lineWidth = 1.5;
+              rr2(g, x + 0.5, y + 0.5, sz - 1, sz - 1, 6);
+              g.stroke();
+              g.setLineDash([]);
+            }
+            if (c === cur) {
+              g.strokeStyle = "#fff";
+              g.lineWidth = 2.5;
+              rr2(g, x - 2, y - 2, sz + 4, sz + 4, 8);
+              g.stroke();
+              g.fillStyle = "#fff";
+              g.beginPath();
+              g.arc(x + sz / 2, y + sz / 2 + (c.flag ? 6 : 0), 3.5, 0, 6.3);
+              g.fill();
+            }
+          }
+        }
+        function rr2(g, x, y, w, h, r) {
+          g.beginPath();
+          g.moveTo(x + r, y);
+          g.arcTo(x + w, y, x + w, y + h, r);
+          g.arcTo(x + w, y + h, x, y + h, r);
+          g.arcTo(x, y + h, x, y, r);
+          g.arcTo(x, y, x + w, y, r);
+          g.closePath();
+        }
+
+        /* ============ interface ============ */
+        let toastT = 0;
+        function toast(msg) {
+          const t = $("toast");
+          t.textContent = msg;
+          t.classList.add("on");
+          clearTimeout(toastT);
+          toastT = setTimeout(() => t.classList.remove("on"), 2000);
+        }
+        const fmt = (ms) => {
+          const s = Math.floor(ms / 1000);
+          return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        };
+        function showOverlay(html) {
+          $("card").innerHTML = html;
+          $("overlay").hidden = false;
+          const b = $("playBtn");
+          if (b) b.focus({ preventScroll: true });
+        }
+        function hideOverlay() {
+          $("overlay").hidden = true;
+        }
+        function menuHTML() {
+          return `<h2>Labirinto das Chaves</h2>
+  <p>Ache a bandeira num labirinto de salas. Ele muda a cada partida.</p>
+  <ul>
+    <li><span class="dot" style="background:#8a5fe8"></span><span><b>Salas roxas (top-down):</b> ande nas quatro direções e procure as chaves.</span></li>
+    <li><span class="dot" style="background:#2aa3e6"></span><span><b>Salas azuis (plataforma):</b> corra e pule. Cair no buraco leva você de volta à entrada da sala.</span></li>
+    <li><span class="dot" style="background:#f2c230"></span><span><b>Portas douradas:</b> cada chave abre uma porta. Ache a chave antes de chegar nela.</span></li>
+    <li><span class="dot" style="background:#ff4d6d"></span><span><b>Bandeira:</b> toque nela para vencer.</span></li>
+  </ul>
+  <button class="main" id="playBtn">Jogar</button>`;
+        }
+        function begin(fresh) {
+          startMusic();
+          if (fresh || !world) {
+            seed = Math.floor(Math.random() * 1e6);
+            world = generate(seed);
+          }
+          cur = world.start;
+          visited = new Set([cur.id]);
+          P.keys = 0;
+          P.face = 1;
+          P.fx = 0;
+          P.fy = 1;
+          P.onGround = false;
+          P.coyote = 0;
+          P.buf = 0;
+          placeIn(cur, -1);
+          particles = [];
+          fade = 1;
+          state = "play";
+          tStart = performance.now();
+          tElapsed = 0;
+          $("seedTxt").textContent =
+            "Labirinto #" +
+            seed +
+            " · " +
+            world.lockCount +
+            " portas trancadas";
+          hideOverlay();
+          toast("Procure a chave e ache a bandeira");
+        }
+        $("overlay").addEventListener("click", (e) => {
+          if (e.target.id === "playBtn") begin(state === "won");
+        });
+        $("newBtn").addEventListener("click", () => begin(true));
+        $("musicBtn").addEventListener("click", () => {
+          musicEnabled = !musicEnabled;
+          $("musicBtn").textContent = musicEnabled
+            ? "Música: ligada"
+            : "Música: desligada";
+          $("musicBtn").setAttribute("aria-pressed", String(musicEnabled));
+          if (musicEnabled) startMusic();
+          else {
+            if (musicTimer) clearInterval(musicTimer);
+            musicTimer = null;
+            setMusicVolume();
+          }
+        });
+        $("fullBtn").addEventListener("click", async () => {
+          const stage = document.querySelector(".stage");
+          try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            else if (stage.requestFullscreen) await stage.requestFullscreen();
+            else toast("Tela cheia não está disponível neste navegador");
+          } catch (error) {
+            console.error("Não foi possível alternar para tela cheia:", error);
+            toast("Não foi possível ativar a tela cheia");
+          }
+        });
+        $("exitFullscreenBtn").addEventListener("click", async () => {
+          try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+          } catch (error) {
+            console.error("Não foi possível sair da tela cheia:", error);
+            toast("Não foi possível sair da tela cheia");
+          }
+        });
+        document.addEventListener("fullscreenchange", () => {
+          const isFullscreen = Boolean(document.fullscreenElement);
+          $("fullBtn").textContent = isFullscreen
+            ? "Sair da tela cheia"
+            : "Tela cheia";
+          $("fullBtn").setAttribute("aria-pressed", String(isFullscreen));
+        });
+
+        /* ============ loop ============ */
+        let last = 0;
+        function frame(ts) {
+          const dt = Math.min(0.05, (ts - last) / 1000 || 0);
+          last = ts;
+          time += dt;
+          if (state === "play") {
+            const n = Math.max(1, Math.ceil(dt / (1 / 60)));
+            for (let i = 0; i < n && state === "play"; i++) update(dt / n);
+            tElapsed = performance.now() - tStart;
+          }
+          updParticles(dt);
+          if (shake > 0) shake = Math.max(0, shake - dt);
+          if (fade > 0) fade = Math.max(0, fade - dt * 3.2);
+          render();
+          drawMini();
+          $("sKeys").textContent = P.keys;
+          $("sTime").textContent = fmt(state === "menu" ? 0 : tElapsed);
+          $("sRooms").textContent = visited.size + "/" + world.cells.length;
+          requestAnimationFrame(frame);
+        }
+
+        /* ============ início ============ */
+        seed = Math.floor(Math.random() * 1e6);
+        world = generate(seed);
+        cur = world.start;
+        visited = new Set([cur.id]);
+        placeIn(cur, -1);
+        $("seedTxt").textContent =
+          "Labirinto #" + seed + " · " + world.lockCount + " portas trancadas";
+        showOverlay(menuHTML());
+        requestAnimationFrame(frame);
+      })();
+    </script>
+  </body>
+</html>
